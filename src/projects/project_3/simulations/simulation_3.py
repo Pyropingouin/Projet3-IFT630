@@ -300,6 +300,21 @@ class LogAnalyzer:
             merged['min_delivery_time'] = min(merged['delivery_times'])
             
         #TODO: Ajouter deux métriques supplémentaires. 
+        # Nouvelle métrique 1 : Moyenne de messages par expéditeur
+        if merged['senders']:
+            merged['average_messages_per_sender'] = sum(merged['senders'].values()) / len(merged['senders'])
+        else:
+            merged['average_messages_per_sender'] = 0
+
+        # Nouvelle métrique 2 : Pic de messages par minute
+      
+        if merged['timestamps']:
+            minutes = [ts.replace(second=0, microsecond=0) for ts in merged['timestamps']]
+            per_minute_counts = Counter(minutes)
+            merged['peak_messages_per_minute'] = max(per_minute_counts.values())
+        else:
+            merged['peak_messages_per_minute'] = 0
+                
         
         return merged
     
@@ -314,19 +329,28 @@ class LogAnalyzer:
             Statistiques d'analyse du fichier
         """
         start_time = time.time()
-        
+
+
         # Diviser le fichier en chunks
         # TODO utiliser split_file_into_chunks pour diviser le fichier en chunks
-  
-        
+        chunks = self.split_file_into_chunks(file_path, self.num_processes)
+
         # Préparer les arguments pour chaque processus
         # TODO mettre dans une liste les arguments pour chaque procesus
         
+        args = [(file_path, start, end) for start, end in chunks]
+
         # Traiter les chunks en parallèle
         # TODO : Écrire le code pour traiter les chunks en parallèle
-        
+        with multiprocessing.Pool(self.num_processes) as pool:
+            all_stats = pool.map(self.process_chunk, args)
+
+
         # Fusionner les résultats
-        merged_stats = None # TODO: merger les résultats dans la variables merged_stats.
+        # merged_stats = None # TODO: merger les résultats dans la variables merged_stats.
+        merged_stats = self.merge_stats(all_stats)    
+            
+    
         
         # Ajouter des informations sur le traitement
         processing_time = time.time() - start_time
@@ -509,7 +533,11 @@ class LogAnalyzer:
                 f.write(f"Temps moyen de livraison: {stats['avg_delivery_time'] * 1000:.2f} ms\n")
                 f.write(f"Temps maximum de livraison: {stats['max_delivery_time'] * 1000:.2f} ms\n")
                 f.write(f"Temps minimum de livraison: {stats['min_delivery_time'] * 1000:.2f} ms\n\n")
-            
+
+            f.write("--- Autres métriques ---\n")
+            f.write(f"Nombre moyen de messages par expéditeur: {stats['average_messages_per_sender']:.2f}\n")
+            f.write(f"Nombre maximal de messages reçus en une minute: {stats['peak_messages_per_minute']}\n\n")    
+                        
             f.write("--- Types de messages ---\n")
             for msg_type, count in sorted(stats['message_types'].items(), key=lambda x: x[1], reverse=True):
                 f.write(f"{msg_type}: {count}\n")
@@ -600,6 +628,9 @@ class Simulation3:
             print(f"Nombre total de messages: {sum(stats['message_types'].values())}")
             print(f"Taux de réussite des livraisons: {stats['success_rate']:.2f}%")
             print(f"Messages par seconde: {stats['messages_per_second']:.2f}")
+            print(f"Nombre moyen de messages par expéditeur: {stats['average_messages_per_sender']:.2f}")
+            print(f"Nombre maximal de messages reçus en une minute: {stats['peak_messages_per_minute']}")
+            
             
             if 'avg_delivery_time' in stats:
                 print(f"Temps moyen de livraison: {stats['avg_delivery_time'] * 1000:.2f} ms")

@@ -729,14 +729,120 @@ class MessageSimulationManager:
         self.logger.info("Générateur de messages - Scénario 3 démarré")
         
     def start_message_generator_scenario_4(self):
-        """Démarre un thread qui génère le scénario 4 : Écrire un scénario de votre choix, en vous basant sur les autres"""
-        # TODO  Proposer une implémentation de votre choix
-        pass
+        """Démarre un thread qui génère le scénario 4 : Incident sur une ligne de bus"""
+        import threading
+        import time
+        import random
+
+        def generate_scenario_4():
+            self.logger.info("Démarrage du générateur de messages - Scénario 4: Incident sur une ligne")
+            affected_buses = [0, 1]
+            stops = list(self.seed.stops.keys())
+            routes = list(self.seed.routes.keys())
+            iteration = 0
+
+            while not self.stop_event.is_set():
+                try:
+                    iteration += 1
+                    self.logger.info(f"=== Scénario 4: Itération {iteration} ===")
+
+                    broken_bus = random.choice(affected_buses)
+                    incident_stop = random.choice(stops)
+
+                    # Simuler un incident
+                    self.message_broker.publish(Message(
+                        MessageType.SYSTEM_ALERT,
+                        "STSMessageGenerator",
+                        {
+                            'message': f"Incident signalé pour le bus {broken_bus} à l'arrêt {incident_stop}",
+                            'level': 'ERROR',
+                            'details': {
+                                'bus_id': broken_bus,
+                                'stop_id': incident_stop,
+                                'incident_type': 'breakdown'
+                            }
+                        }
+                    ))
+                    self.logger.info(f"Incident simulé pour bus {broken_bus} à arrêt {incident_stop}")
+
+                    # Rediriger les passagers
+                    redirect_stop = random.choice([s for s in stops if s != incident_stop])
+                    self.message_broker.publish(Message(
+                        MessageType.ROUTE_UPDATE,
+                        "STSMessageGenerator",
+                        {
+                            'bus_id': broken_bus,
+                            'route_id': random.choice(routes),
+                            'reroute_reason': 'incident',
+                            'redirect_stop': redirect_stop
+                        }
+                    ))
+                    self.logger.info(f"Passagers redirigés vers arrêt {redirect_stop}")
+
+                    time.sleep(20)
+
+                except Exception as e:
+                    self.logger.error(f"Erreur dans le scénario 4: {e}")
+                    import traceback
+                    self.logger.error(traceback.format_exc())
+                    time.sleep(10)
+
+        threading.Thread(
+            target=generate_scenario_4,
+            daemon=True,
+            name="MessageGenerator-Scenario4"
+        ).start()
+        self.logger.info("Générateur de messages - Scénario 4 démarré")
+
     
     def start_message_generator_scenario_5(self):
-        """Démarre un thread qui génère le scénario 5 : Écrire un autre scénario de votre choix, en vous basant sur les autres"""
-        # TODO  Proposer une implémentation de votre choix
-        pass
+        """Démarre un thread qui génère le scénario 5 : Augmentation temporaire de la fréquence"""
+        import threading
+        import time
+        import random
+
+        def generate_scenario_5():
+            self.logger.info("Démarrage du générateur de messages - Scénario 5: Augmentation de la fréquence")
+            buses = [0, 1, 2, 3]
+            routes = list(self.seed.routes.keys())
+            stops = list(self.seed.stops.keys())
+            iteration = 0
+
+            while not self.stop_event.is_set():
+                try:
+                    iteration += 1
+                    self.logger.info(f"=== Scénario 5: Itération {iteration} ===")
+
+                    target_route = random.choice(routes)
+                    increased_frequency = random.choice([5, 10, 15])  # minutes
+                    bus_id = random.choice(buses)
+
+                    self.message_broker.publish(Message(
+                        MessageType.SCHEDULE_UPDATE,
+                        "STSMessageGenerator",
+                        {
+                            'bus_id': bus_id,
+                            'route_id': target_route,
+                            'frequency': increased_frequency,
+                            'note': 'Demande exceptionnelle (événement ou heure de pointe)'
+                        }
+                    ))
+                    self.logger.info(f"Fréquence augmentée pour bus {bus_id} sur la route {target_route} à chaque {increased_frequency} minutes")
+
+                    time.sleep(30)
+
+                except Exception as e:
+                    self.logger.error(f"Erreur dans le scénario 5: {e}")
+                    import traceback
+                    self.logger.error(traceback.format_exc())
+                    time.sleep(10)
+
+        threading.Thread(
+            target=generate_scenario_5,
+            daemon=True,
+            name="MessageGenerator-Scenario5"
+        ).start()
+        self.logger.info("Générateur de messages - Scénario 5 démarré")
 
 
 
